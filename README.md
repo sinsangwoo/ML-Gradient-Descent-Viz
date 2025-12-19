@@ -2,7 +2,6 @@
 
 > **Project Type**: Machine Learning Theory & Optimization
 > **Focus**: Linear Regression, Gradient Descent, Convex Optimization
-> **Note**: This README is intentionally written using **pure GitHub Markdown + `$$ ... $$` math blocks only** to avoid any Unicode / hidden-format issues when viewed in a web browser.
 
 ---
 
