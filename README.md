@@ -1,99 +1,213 @@
-## 📊 경사하강법 시각화 프로젝트
+# Gradient Descent Optimization Dynamics (Linear Regression)
 
-이 프로젝트는 **선형 회귀 모델**을 직접 구현하고, **경사하강법을 통한 학습 과정과 손실 함수의 수렴 및 시각화**를 통해 머신러닝의 핵심 원리를 직관적으로 이해할 수 있도록 만든 교육용 애플리케이션입니다. 📉
-
-> 💡 한글 환경에서도 문제없이 작동하도록 나눔고딕 폰트를 자동으로 다운로드 및 설정합니다.
-
-### 🛠️ 주요 기능
-
-* 경사하강법을 통한 선형 회귀 학습
-* 손실 함수 수렴 그래프 시각화
-* 2D 등고선 & 3D 곡면 기반의 손실 함수 시각화
-* 폰트 자동 설정으로 한글 지원 강화
+> **Project Type**: Machine Learning Theory & Optimization
+> **Focus**: Linear Regression, Gradient Descent, Convex Optimization
+> **Note**: This README is intentionally written using **pure GitHub Markdown + `$$ ... $$` math blocks only** to avoid any Unicode / hidden-format issues when viewed in a web browser.
 
 ---
 
-### 📦 설치 및 실행 방법
+## 1. Overview
 
-#### 1️⃣ Miniconda 설치
+This repository implements **linear regression trained with gradient descent from scratch**, without relying on high-level ML libraries such as scikit-learn or PyTorch.
 
-* [Miniconda 다운로드](https://docs.conda.io/en/latest/miniconda.html)
-* 운영 체제에 맞는 설치 파일을 사용합니다.
+The goal of the project is **not prediction accuracy**, but a **clear understanding of optimization dynamics**, including:
 
-#### 2️⃣ 가상환경 생성 및 활성화
+* how gradients are derived mathematically
+* why gradient descent converges for linear regression
+* how learning rate and initialization affect convergence
 
-```bash
-conda create --name gd-viz python=3.10
-conda activate gd-viz
+This project serves as a **baseline research artifact** for further studies in numerical optimization and non-convex learning problems.
+
+---
+
+## 2. Problem Definition
+
+We are given a dataset consisting of `m` samples:
+
+$$
+\mathcal{D} = { (x^{(i)}, y^{(i)}) }_{i=1}^{m}
+$$
+
+For simplicity, this project focuses on **univariate linear regression**.
+
+The hypothesis function is defined as:
+
+$$
+h_\theta(x) = wx + b
+$$
+
+where:
+
+* `w` is the weight (slope)
+* `b` is the bias (intercept)
+
+---
+
+## 3. Objective Function (Mean Squared Error)
+
+To train the model, we minimize the **Mean Squared Error (MSE)** loss:
+
+$$
+J(w, b) = \frac{1}{m} \sum_{i=1}^{m} \left( h_\theta(x^{(i)}) - y^{(i)} \right)^2
+$$
+
+This objective function is:
+
+* quadratic in parameters
+* convex
+* guaranteed to have a **single global minimum**
+
+---
+
+## 4. Gradient Descent
+
+Gradient Descent is a first-order iterative optimization algorithm that updates parameters in the direction of the **negative gradient**.
+
+The update rule is:
+
+$$
+\theta_{t+1} = \theta_t - \eta , \nabla J(\theta_t)
+$$
+
+where `η` is the learning rate.
+
+---
+
+## 5. Gradient Derivation
+
+### 5.1 Gradient with respect to `w`
+
+$$
+\frac{\partial J}{\partial w}
+= \frac{2}{m} \sum_{i=1}^{m}
+\left( h_\theta(x^{(i)}) - y^{(i)} \right)
+x^{(i)}
+$$
+
+### 5.2 Gradient with respect to `b`
+
+$$
+\frac{\partial J}{\partial b}
+= \frac{2}{m} \sum_{i=1}^{m}
+\left( h_\theta(x^{(i)}) - y^{(i)} \right)
+$$
+
+These gradients are directly implemented in the optimization engine.
+
+---
+
+## 6. Vectorized Formulation
+
+Let:
+
+* `X` be the input vector of shape `(m, 1)`
+* `y` be the target vector
+
+Predictions:
+
+$$
+\hat{y} = Xw + b
+$$
+
+Error vector:
+
+$$
+e = \hat{y} - y
+$$
+
+Gradients in vectorized form:
+
+$$
+\nabla_w J = \frac{2}{m} X^T (Xw + b - y)
+$$
+
+$$
+\nabla_b J = \frac{2}{m} \sum e
+$$
+
+Vectorization removes explicit loops and significantly improves computational efficiency.
+
+---
+
+## 7. Convexity Guarantee
+
+The loss function can be written as:
+
+$$
+J(\theta) = \frac{1}{m} | X\theta - y |^2
+$$
+
+The Hessian matrix is:
+
+$$
+H = \nabla^2 J(\theta) = \frac{2}{m} X^T X
+$$
+
+For any non-zero vector `v`:
+
+$$
+v^T H v = \frac{2}{m} | Xv |^2 \ge 0
+$$
+
+Therefore:
+
+* the Hessian is positive semi-definite
+* the loss function is convex
+* gradient descent converges to the global minimum (with a proper learning rate)
+
+---
+
+## 8. Project Structure
+
+```text
+.
+├── main.py                # Experiment orchestration
+├── data_generator.py      # Synthetic data generation
+├── gradient_descent.py    # Optimization engine
+├── visualizer.py          # Loss surface and trajectory visualization
+└── README.md
 ```
 
-#### 3️⃣ 필요한 패키지 설치
+---
 
-```bash
-pip install numpy matplotlib
-```
+## 9. Key Design Decisions
 
-#### 4️⃣ Python 스크립트 실행
-
-```bash
-python main.py
-```
+* No high-level ML libraries are used
+* All gradients are derived and implemented manually
+* Training history (loss, parameters) is fully logged
+* Visualization is treated as an analysis tool, not decoration
 
 ---
 
-### 📈 시각화 구성
+## 10. Limitations and Future Work
 
-#### ✅ 1. 최종 회귀 결과 시각화
+Current implementation uses **batch gradient descent**, which scales poorly for large datasets.
 
-* 학습된 회귀선과 원본 데이터를 한 눈에 비교하여 모델의 예측 성능 확인
+Future extensions include:
 
-#### 📉 2. 손실 함수 수렴 과정
-
-* 로그 스케일로 표현된 손실 곡선을 통해 학습이 잘 진행되었는지 확인 가능
-
-#### 🌀 3. 손실 함수 등고선 시각화
-
-* 파라미터(W, b)가 경사를 따라 이동하며 최솟값으로 수렴하는 경로 표시
-
-#### 🌋 4. 3D 손실 곡면 시각화
-
-* 가중치(W), 편향(b), 손실 값(Loss)의 관계를 3D 시각화로 직관적으로 표현
+* Stochastic / Mini-batch Gradient Descent
+* Momentum-based optimizers
+* Adaptive learning rate methods (Adam, RMSProp)
+* Non-convex loss landscapes (polynomial regression, neural networks)
 
 ---
 
-### 🧠 기술 스택
+## 11. References
 
-* **Python 3.10**
-* **NumPy**: 수치 계산 및 선형대수 연산
-* **Matplotlib**: 2D/3D 시각화 및 애노테이션 처리
-* **폰트 자동 설정**: `urllib`, `ssl`, `os`를 사용해 플랫폼 무관하게 한글 폰트 적용
+* Boyd, S. & Vandenberghe, L. *Convex Optimization*
+* Goodfellow, Bengio, Courville. *Deep Learning*
+* Nocedal & Wright. *Numerical Optimization*
 
 ---
 
-### 📂 프로젝트 구조
+## Note on Mathematical Derivations
+
+Full step-by-step derivations and experimental analysis are intentionally **kept outside the README**.
+
+If you are interested in the complete mathematical development, see:
 
 ```
-├── main.py               # 전체 실행 스크립트
-├── NanumGothic.ttf       # 실행 중 자동 다운로드되는 한글 폰트
+docs/math_derivation.md
 ```
 
----
-
-### 🎯 결과 예시
-
-* `최종 회귀선`, `손실 수렴 그래프`, `등고선 그래프`, `3D 곡면 시각화`까지 4단계 시각화가 차례대로 출력됩니다.
-* 학습 과정을 시각적으로 따라가며 경사하강법의 작동 원리를 쉽게 이해할 수 있습니다.
-
----
-
-### 🙌 활용 예시
-
-* 머신러닝 교육 및 튜토리얼
-* 모델 학습 시각화 데모
-* 수학적 개념(미분, 손실 함수, 최적화)의 시각적 학습 자료
-
----
-
-### 📬 문의
-
-궁금한 사항이나 기능 개선 요청은 이슈를 남겨주세요!
+This separation is deliberate to keep the README readable while preserving research-level rigor.
