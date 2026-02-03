@@ -1,9 +1,9 @@
 import numpy as np
 
 class GradientDescentRegressor:
-    """경사하강법을 사용한 선형 회귀 모델"""
+    """경사하강법을 사용한 선형 회귀 모델 (Enhanced with convergence monitoring)"""
     
-    def __init__(self, learning_rate=0.1, epochs=1000, random_seed=None):
+    def __init__(self, learning_rate=0.1, epochs=1000, random_seed=None, monitor_convergence=False):
         """
         Parameters:
         -----------
@@ -13,10 +13,13 @@ class GradientDescentRegressor:
             학습 반복 횟수
         random_seed : int, optional
             가중치 초기화를 위한 난수 시드
+        monitor_convergence : bool
+            이론적 수렴 속도 모니터링 여부
         """
         self.learning_rate = learning_rate
         self.epochs = epochs
         self.random_seed = random_seed
+        self.monitor_convergence = monitor_convergence
         
         # 모델 파라미터
         self.W = None
@@ -26,6 +29,11 @@ class GradientDescentRegressor:
         self.w_history = []
         self.b_history = []
         self.loss_history = []
+        self.gradient_norms = []  # Track gradient magnitudes
+        
+        # Convergence theory objects (lazy initialization)
+        self._convergence_analyzer = None
+        self._stability_analyzer = None
         
     def _initialize_parameters(self):
         """가중치와 편향 초기화"""
@@ -101,6 +109,32 @@ class GradientDescentRegressor:
         self : GradientDescentRegressor
             학습된 모델
         """
+        # Initialize convergence monitoring if enabled
+        if self.monitor_convergence:
+            from theory.convergence_proof import ConvergenceAnalyzer
+            from theory.numerical_stability import NumericalStabilityAnalyzer
+            
+            self._convergence_analyzer = ConvergenceAnalyzer(X, y)
+            self._stability_analyzer = NumericalStabilityAnalyzer(dtype=X.dtype)
+            
+            if verbose:
+                print("\n" + "="*70)
+                print("THEORETICAL CONVERGENCE ANALYSIS (PRE-TRAINING)")
+                print("="*70)
+                self._convergence_analyzer.print_analysis()
+                
+                # Verify learning rate
+                verification = self._convergence_analyzer.verify_convergence_guarantee(self.learning_rate)
+                print("\n[Learning Rate Verification]")
+                if verification['converges']:
+                    print(f"  ✓ Learning rate η={self.learning_rate} will converge")
+                    print(f"  Convergence rate ρ = {verification['convergence_rate']:.6f}")
+                else:
+                    print(f"  ✗ WARNING: Learning rate η={self.learning_rate} may diverge!")
+                    print(f"  Convergence rate ρ = {verification['convergence_rate']:.6f}")
+                    print(f"  Recommended: η < {verification['stability_limit']:.6f}")
+                print("="*70 + "\n")
+        
         # 파라미터 초기화
         self._initialize_parameters()
         n_samples = len(X)
@@ -109,6 +143,7 @@ class GradientDescentRegressor:
         self.w_history = []
         self.b_history = []
         self.loss_history = []
+        self.gradient_norms = []
         
         # 경사하강법 반복
         for step in range(self.epochs + 1):
@@ -119,6 +154,10 @@ class GradientDescentRegressor:
             # 손실 계산 및 저장
             loss = self._compute_loss(X, y)
             self.loss_history.append(loss)
+            
+            # Numerical stability monitoring
+            if self.monitor_convergence and self._stability_analyzer:
+                self._stability_analyzer.monitor_loss(loss, step)
             
             # 진행 상황 출력
             if verbose and step % 100 == 0:
@@ -131,9 +170,29 @@ class GradientDescentRegressor:
             # 그래디언트 계산
             grad_W, grad_b = self._compute_gradients(X, y, n_samples)
             
+            # Track gradient norm
+            grad_norm = np.sqrt(np.sum(grad_W**2) + grad_b**2)
+            self.gradient_norms.append(grad_norm)
+            
+            # Monitor gradient stability
+            if self.monitor_convergence and self._stability_analyzer:
+                gradient_vector = np.array([[grad_W.item()], [grad_b]])
+                self._stability_analyzer.monitor_gradient(gradient_vector, step)
+            
+            # Store old parameters for update monitoring
+            if self.monitor_convergence:
+                theta_old = np.array([[self.W.item()], [self.b.item()]])
+            
             # 파라미터 업데이트 (경사하강법)
             self.W -= self.learning_rate * grad_W
             self.b -= self.learning_rate * grad_b
+            
+            # Monitor parameter update
+            if self.monitor_convergence and self._stability_analyzer:
+                theta_new = np.array([[self.W.item()], [self.b.item()]])
+                self._stability_analyzer.monitor_parameter_update(
+                    theta_old, theta_new, step, self.learning_rate
+                )
         
         if verbose:
             print("\n" + "="*50)
@@ -143,6 +202,11 @@ class GradientDescentRegressor:
             print(f"최종 b (편향): {self.b.item():.4f}")
             print(f"최종 Loss: {loss:.6f}")
             print("="*50)
+            
+            # Print stability analysis if monitoring enabled
+            if self.monitor_convergence and self._stability_analyzer:
+                print("\n")
+                self._stability_analyzer.print_stability_report()
         
         return self
     
@@ -176,21 +240,35 @@ class GradientDescentRegressor:
         return {
             'w_history': self.w_history,
             'b_history': self.b_history,
-            'loss_history': self.loss_history
+            'loss_history': self.loss_history,
+            'gradient_norms': self.gradient_norms
         }
+    
+    def get_convergence_analyzer(self):
+        """Get convergence analyzer (if monitoring was enabled)"""
+        return self._convergence_analyzer
+    
+    def get_stability_analyzer(self):
+        """Get stability analyzer (if monitoring was enabled)"""
+        return self._stability_analyzer
 
 
 if __name__ == "__main__":
     # 테스트 코드
-    print("경사하강법 모델 테스트\n")
+    print("경사하강법 모델 테스트 (with convergence monitoring)\n")
     
     # 간단한 데이터 생성
     np.random.seed(42)
     X_test = 2 * np.random.rand(50, 1)
     y_test = 5 + 2 * X_test + np.random.randn(50, 1)
     
-    # 모델 생성 및 학습
-    model = GradientDescentRegressor(learning_rate=0.1, epochs=500, random_seed=42)
+    # 모델 생성 및 학습 (with monitoring)
+    model = GradientDescentRegressor(
+        learning_rate=0.1, 
+        epochs=500, 
+        random_seed=42,
+        monitor_convergence=True  # Enable convergence monitoring
+    )
     model.fit(X_test, y_test, verbose=True)
     
     # 예측
