@@ -101,6 +101,24 @@ history = optimizer.get_history()
 analyzer = optimizer.get_convergence_analyzer()
 ```
 
+#### Comprehensive Benchmarking
+
+```python
+from benchmarks.optimizer_comparison import OptimizerBenchmark
+
+benchmark = OptimizerBenchmark(X, y, true_params={'W': 2.0, 'b': 5.0})
+results = benchmark.compare_all_optimizers(learning_rate=0.1, epochs=500)
+
+# Generates comparison plots and statistics
+```
+
+**Features:**
+- ✓ Unified `BaseOptimizer` interface
+- ✓ Automatic history tracking
+- ✓ Per-optimizer configuration
+- ✓ Convergence monitoring
+- ✓ Side-by-side comparison tools
+
 ---
 
 ## 📈 Project Structure
@@ -171,7 +189,7 @@ See [OPTIMIZER_GUIDE.md](docs/OPTIMIZER_GUIDE.md) for complete theory.
 pip install numpy matplotlib scipy pytest
 ```
 
-### Quick Start
+### Quick Start - Phase 1 (Convergence Theory)
 
 ```python
 import numpy as np
@@ -206,7 +224,9 @@ Generates:
 - Hyperparameter sensitivity analysis
 - Ill-conditioning robustness tests
 
-### Run Tests
+# Compare all optimizers
+benchmark = OptimizerBenchmark(X, y, true_params={'W': 2.0, 'b': 5.0})
+results = benchmark.compare_all_optimizers(learning_rate=0.1, epochs=500)
 
 ```bash
 # All tests
@@ -249,7 +269,7 @@ See [OPTIMIZER_GUIDE.md](docs/OPTIMIZER_GUIDE.md) for complete decision tree.
 
 ---
 
-## 📄 Documentation
+## 📚 Documentation
 
 ### Mathematical Theory
 - [Convergence Theory](docs/CONVERGENCE_THEORY.md) - Full proofs and derivations
