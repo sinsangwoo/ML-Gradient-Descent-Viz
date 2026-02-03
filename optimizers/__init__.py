@@ -1,32 +1,24 @@
 """
-Optimizer Zoo - Collection of gradient-based optimization algorithms.
+Optimizer Zoo - Collection of optimization algorithms with theoretical guarantees.
 
-This module provides research-grade implementations of various optimization
-algorithms with theoretical convergence guarantees and practical enhancements.
+This module implements various first-order and second-order optimization methods:
+- First-order: SGD, Momentum, Nesterov, Adam, RMSProp, AdaGrad
+- Second-order: Newton, Quasi-Newton (BFGS, L-BFGS)
+- Variance reduction: SVRG, SARAH
+- Line search: Armijo, Wolfe conditions
 
-First-Order Methods:
-- SGD: Stochastic Gradient Descent (batch, mini-batch, online)
-- Momentum: Polyak's heavy ball method
-- Nesterov: Accelerated gradient with momentum
-- AdaGrad: Adaptive learning rates per parameter
-- RMSProp: Root Mean Square Propagation
-- Adam: Adaptive Moment Estimation
-- AdamW: Adam with decoupled weight decay
-
-All optimizers follow a unified interface for easy comparison and benchmarking.
+All optimizers inherit from BaseOptimizer and follow a unified API.
 """
 
 from .base_optimizer import BaseOptimizer
 from .sgd import SGD
-from .momentum import Momentum, NesterovMomentum
-from .adagrad import AdaGrad
-from .rmsprop import RMSProp
-from .adam import Adam, AdamW
+from .momentum import MomentumSGD, NesterovMomentum
+from .adaptive import AdaGrad, RMSProp, Adam, AdamW
 
 __all__ = [
     'BaseOptimizer',
     'SGD',
-    'Momentum',
+    'MomentumSGD',
     'NesterovMomentum',
     'AdaGrad',
     'RMSProp',
