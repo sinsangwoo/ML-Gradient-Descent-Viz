@@ -1,128 +1,99 @@
 """
 Stochastic Gradient Descent (SGD)
 
-Implements three variants:
-1. Batch GD: Uses full dataset per iteration
-2. Mini-batch SGD: Uses random subsets
-3. Online SGD: Single sample per iteration
+Implements vanilla SGD with optional mini-batch support.
+This serves as the baseline optimizer for comparison.
 
-Theory:
-For convex functions with Lipschitz gradients (constant L):
-- Batch GD converges as O(1/k) for optimal step size
-- SGD converges as O(1/√k) in expectation
+Convergence Theory:
+- For convex functions: O(1/k) convergence
+- For strongly convex: Linear convergence with optimal learning rate
 
 References:
-- Robbins & Monro (1951). A Stochastic Approximation Method
-- Bottou (2010). Large-Scale Machine Learning with Stochastic Gradient Descent
+- Robbins, H., & Monro, S. (1951). A stochastic approximation method.
+- Bottou, L. (2010). Large-scale machine learning with stochastic gradient descent.
 """
 
 import numpy as np
-from typing import Dict, Optional
+from typing import Dict, Tuple
 from .base_optimizer import BaseOptimizer
 
 
 class SGD(BaseOptimizer):
     """
-    Stochastic Gradient Descent optimizer.
+    Vanilla Stochastic Gradient Descent.
     
     Update rule:
-        θ_{t+1} = θ_t - η ∇J(θ_t; batch)
+    θ_{t+1} = θ_t - α ∇J(θ_t)
     
-    where batch can be full dataset, mini-batch, or single sample.
+    Properties:
+    - Memoryless (no momentum)
+    - Constant learning rate
+    - Simplest first-order method
     """
     
-    def __init__(self, 
-                 learning_rate: float = 0.01,
-                 batch_size: Optional[int] = None,
-                 shuffle: bool = True,
-                 random_seed: Optional[int] = None):
+    def __init__(self, learning_rate: float = 0.01, epochs: int = 1000,
+                 batch_size: int = None, **kwargs):
         """
         Parameters:
         -----------
         learning_rate : float
-            Step size
+            Step size α
+        epochs : int
+            Number of passes through data
         batch_size : int, optional
-            Batch size for mini-batch SGD
-            - None: full batch (standard GD)
-            - int: mini-batch SGD
-            - 1: online SGD
-        shuffle : bool
-            Whether to shuffle data each epoch
-        random_seed : int, optional
-            Random seed for reproducibility
+            Mini-batch size (None = full batch)
         """
-        super().__init__(learning_rate=learning_rate, name="SGD")
+        super().__init__(learning_rate=learning_rate, epochs=epochs, **kwargs)
         self.batch_size = batch_size
-        self.shuffle = shuffle
-        self.random_seed = random_seed
         
-        if random_seed is not None:
-            np.random.seed(random_seed)
+    def _initialize_state(self):
+        """SGD has no additional state."""
+        pass
     
-    def step(self, params: np.ndarray, gradient: np.ndarray) -> np.ndarray:
+    def _compute_update(self, grad_W: np.ndarray, grad_b: float,
+                       step: int) -> Tuple[np.ndarray, float]:
         """
-        Perform SGD update.
+        Vanilla SGD update: Δθ = -α ∇J(θ)
+        """
+        update_W = -self.learning_rate * grad_W
+        update_b = -self.learning_rate * grad_b
         
-        Parameters:
-        -----------
-        params : ndarray
-            Current parameters
-        gradient : ndarray
-            Gradient (possibly from mini-batch)
-            
-        Returns:
-        --------
-        new_params : ndarray
-            Updated parameters
-        """
-        # Standard SGD update
-        new_params = params - self.learning_rate * gradient
-        return new_params
+        # Track effective learning rate (constant for vanilla SGD)
+        if self.track_history:
+            self.learning_rate_history.append(self.learning_rate)
+        
+        return update_W, update_b
     
-    def get_config(self) -> Dict:
-        """Get optimizer configuration."""
+    def get_hyperparameters(self) -> Dict:
+        """Return SGD hyperparameters."""
         return {
+            'optimizer': 'SGD',
             'learning_rate': self.learning_rate,
-            'batch_size': self.batch_size,
-            'shuffle': self.shuffle
+            'batch_size': self.batch_size if self.batch_size else 'full'
         }
+
+
+if __name__ == "__main__":
+    # Test SGD
+    print("Testing SGD optimizer\n")
     
-    def create_batches(self, X: np.ndarray, y: np.ndarray, 
-                       epoch: int = 0) -> list:
-        """
-        Create mini-batches from data.
-        
-        Parameters:
-        -----------
-        X : ndarray, shape (m, n)
-            Features
-        y : ndarray, shape (m, 1)
-            Targets
-        epoch : int
-            Current epoch (for seeding)
-            
-        Returns:
-        --------
-        batches : list of tuples
-            [(X_batch, y_batch), ...]
-        """
-        m = X.shape[0]
-        
-        # Full batch
-        if self.batch_size is None or self.batch_size >= m:
-            return [(X, y)]
-        
-        # Shuffle indices
-        indices = np.arange(m)
-        if self.shuffle:
-            if self.random_seed is not None:
-                np.random.seed(self.random_seed + epoch)
-            np.random.shuffle(indices)
-        
-        # Create mini-batches
-        batches = []
-        for i in range(0, m, self.batch_size):
-            batch_indices = indices[i:i+self.batch_size]
-            batches.append((X[batch_indices], y[batch_indices]))
-        
-        return batches
+    from data_generator import LinearDataGenerator
+    
+    np.random.seed(42)
+    data_gen = LinearDataGenerator(W_true=2, b_true=5, seed=42)
+    X, y = data_gen.generate_data(n_samples=100, noise_std=1.0)
+    
+    optimizer = SGD(
+        learning_rate=0.1,
+        epochs=500,
+        random_seed=42,
+        monitor_convergence=True
+    )
+    
+    optimizer.fit(X, y, verbose=True)
+    
+    print("\nTest predictions:")
+    X_test = np.array([[0.5], [1.0], [1.5]])
+    y_pred = optimizer.predict(X_test)
+    for x, y_p in zip(X_test, y_pred):
+        print(f"X={x[0]:.1f} → ŷ={y_p[0]:.3f}")

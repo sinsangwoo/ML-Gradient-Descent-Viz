@@ -1,98 +1,96 @@
 """
-Momentum-based Optimizers
+Momentum-Based Optimizers
 
 Implements:
 1. Classical Momentum (Polyak, 1964)
-2. Nesterov Accelerated Gradient (Nesterov, 1983)
+2. Nesterov Accelerated Gradient (NAG)
 
-Theory:
-- Momentum accelerates convergence in relevant directions
-- Dampens oscillations in high-curvature directions
-- Nesterov momentum achieves O(1/k²) convergence for convex smooth functions
+Key Innovation: Accumulate velocity to accelerate convergence
+and dampen oscillations.
+
+Theoretical Guarantees:
+- Classical Momentum: Better constants than SGD
+- Nesterov: Optimal O(1/k²) for smooth convex functions
 
 References:
-- Polyak, B.T. (1964). Some methods of speeding up the convergence of iteration methods
-- Nesterov, Y. (1983). A method for solving the convex programming problem with convergence rate O(1/k²)
-- Sutskever et al. (2013). On the importance of initialization and momentum in deep learning
+- Polyak, B. T. (1964). Some methods of speeding up the convergence of iteration methods.
+- Nesterov, Y. (1983). A method for solving the convex programming problem with convergence rate O(1/k²).
+- Sutskever et al. (2013). On the importance of initialization and momentum in deep learning.
 """
 
 import numpy as np
-from typing import Dict
+from typing import Dict, Tuple
 from .base_optimizer import BaseOptimizer
 
 
-class Momentum(BaseOptimizer):
+class MomentumSGD(BaseOptimizer):
     """
-    Classical Momentum optimizer (Heavy Ball method).
+    SGD with Classical Momentum (Polyak, 1964).
     
     Update rule:
-        v_{t+1} = β v_t + ∇J(θ_t)
-        θ_{t+1} = θ_t - η v_{t+1}
+    v_{t+1} = β*v_t - α*∇J(θ_t)
+    θ_{t+1} = θ_t + v_{t+1}
     
-    where:
-        v_t: velocity (momentum accumulator)
-        β: momentum coefficient (typically 0.9)
-        η: learning rate
+    Where:
+    - v is the velocity (momentum term)
+    - β ∈ [0,1) is the momentum coefficient
+    - α is the learning rate
+    
+    Physical Interpretation:
+    Think of a ball rolling down a hill:
+    - Gradient: current slope
+    - Velocity: accumulated "inertia"
+    - Momentum helps traverse flat regions and escape local minima
     """
     
-    def __init__(self, 
-                 learning_rate: float = 0.01,
-                 momentum: float = 0.9):
+    def __init__(self, learning_rate: float = 0.01, momentum: float = 0.9,
+                 epochs: int = 1000, **kwargs):
         """
         Parameters:
         -----------
         learning_rate : float
-            Step size
+            Step size α
         momentum : float
-            Momentum coefficient β ∈ [0, 1)
-            - 0: equivalent to SGD
-            - 0.9: typical value
-            - 0.99: high momentum
+            Momentum coefficient β ∈ [0,1)
+            - β=0: Vanilla SGD
+            - β=0.9: Standard choice
+            - β=0.99: Heavy momentum (for very flat regions)
+        epochs : int
+            Number of training iterations
         """
-        super().__init__(learning_rate=learning_rate, name="Momentum")
-        
-        if not 0 <= momentum < 1:
-            raise ValueError(f"Momentum must be in [0, 1), got {momentum}")
-        
+        super().__init__(learning_rate=learning_rate, epochs=epochs, **kwargs)
         self.momentum = momentum
-        self.velocity = None
-    
-    def step(self, params: np.ndarray, gradient: np.ndarray) -> np.ndarray:
+        
+        # Velocity state
+        self.v_W = None
+        self.v_b = None
+        
+    def _initialize_state(self):
+        """Initialize velocity vectors to zero."""
+        self.v_W = np.zeros_like(self.W)
+        self.v_b = 0.0
+        
+    def _compute_update(self, grad_W: np.ndarray, grad_b: float,
+                       step: int) -> Tuple[np.ndarray, float]:
         """
-        Perform momentum update.
-        
-        Parameters:
-        -----------
-        params : ndarray
-            Current parameters
-        gradient : ndarray
-            Current gradient
-            
-        Returns:
-        --------
-        new_params : ndarray
-            Updated parameters
+        Momentum update:
+        v ← β*v - α*∇J
+        Δθ = v
         """
-        # Initialize velocity on first step
-        if self.velocity is None:
-            self.velocity = np.zeros_like(params)
+        # Update velocities
+        self.v_W = self.momentum * self.v_W - self.learning_rate * grad_W
+        self.v_b = self.momentum * self.v_b - self.learning_rate * grad_b
         
-        # Update velocity: v = β*v + ∇J
-        self.velocity = self.momentum * self.velocity + gradient
+        # Track effective learning rate
+        if self.track_history:
+            self.learning_rate_history.append(self.learning_rate)
         
-        # Update parameters: θ = θ - η*v
-        new_params = params - self.learning_rate * self.velocity
-        
-        return new_params
+        return self.v_W, self.v_b
     
-    def reset(self):
-        """Reset optimizer state including velocity."""
-        super().reset()
-        self.velocity = None
-    
-    def get_config(self) -> Dict:
-        """Get optimizer configuration."""
+    def get_hyperparameters(self) -> Dict:
+        """Return Momentum SGD hyperparameters."""
         return {
+            'optimizer': 'MomentumSGD',
             'learning_rate': self.learning_rate,
             'momentum': self.momentum
         }
@@ -102,96 +100,136 @@ class NesterovMomentum(BaseOptimizer):
     """
     Nesterov Accelerated Gradient (NAG).
     
-    Update rule:
-        v_{t+1} = β v_t + ∇J(θ_t - β v_t)  # Look-ahead gradient
-        θ_{t+1} = θ_t - η v_{t+1}
+    Update rule (standard form):
+    v_{t+1} = β*v_t - α*∇J(θ_t + β*v_t)
+    θ_{t+1} = θ_t + v_{t+1}
     
-    Key difference from classical momentum:
-    - Gradient computed at look-ahead position (θ - β*v)
-    - Provides better convergence rate: O(1/k²) vs O(1/k)
+    Key Difference from Classical Momentum:
+    - Classical: Compute gradient at current position
+    - Nesterov: Compute gradient at "look-ahead" position
     
-    Interpretation:
-    - "First jump, then correct" instead of "correct, then jump"
-    - More responsive to changes in gradient direction
+    This "look-ahead" gives NAG superior theoretical convergence:
+    - Smooth convex: O(1/k²) vs O(1/k) for SGD
+    - Strongly convex: Better constant in linear convergence
+    
+    Practical Implementation:
+    We use the mathematically equivalent reformulation that doesn't
+    require computing gradient at look-ahead position:
+    
+    θ̃_t = θ_t + β*v_t  (look-ahead position)
+    v_{t+1} = β*v_t - α*∇J(θ̃_t)
+    θ_{t+1} = θ_t + v_{t+1}
     """
     
-    def __init__(self, 
-                 learning_rate: float = 0.01,
-                 momentum: float = 0.9):
+    def __init__(self, learning_rate: float = 0.01, momentum: float = 0.9,
+                 epochs: int = 1000, **kwargs):
         """
         Parameters:
         -----------
         learning_rate : float
-            Step size
+            Step size α
         momentum : float
-            Momentum coefficient β ∈ [0, 1)
+            Momentum coefficient β ∈ [0,1)
+        epochs : int
+            Number of training iterations
         """
-        super().__init__(learning_rate=learning_rate, name="NesterovMomentum")
-        
-        if not 0 <= momentum < 1:
-            raise ValueError(f"Momentum must be in [0, 1), got {momentum}")
-        
+        super().__init__(learning_rate=learning_rate, epochs=epochs, **kwargs)
         self.momentum = momentum
-        self.velocity = None
-    
-    def step(self, params: np.ndarray, gradient: np.ndarray) -> np.ndarray:
+        
+        # Velocity state
+        self.v_W = None
+        self.v_b = None
+        
+    def _initialize_state(self):
+        """Initialize velocity vectors to zero."""
+        self.v_W = np.zeros_like(self.W)
+        self.v_b = 0.0
+        
+    def _compute_gradients(self, X: np.ndarray, y: np.ndarray,
+                          n_samples: int) -> Tuple[np.ndarray, float]:
         """
-        Perform Nesterov momentum update.
+        Override to compute gradient at look-ahead position.
         
-        Note: This expects gradient to be computed at the look-ahead point.
-        For practical implementation, gradient should be:
-            ∇J(params - momentum * velocity)
-        
-        Parameters:
-        -----------
-        params : ndarray
-            Current parameters
-        gradient : ndarray
-            Gradient at look-ahead point
-            
-        Returns:
-        --------
-        new_params : ndarray
-            Updated parameters
+        θ̃ = θ + β*v
+        ∇J(θ̃) instead of ∇J(θ)
         """
-        # Initialize velocity on first step
-        if self.velocity is None:
-            self.velocity = np.zeros_like(params)
+        # Compute look-ahead parameters
+        W_lookahead = self.W + self.momentum * self.v_W
+        b_lookahead = self.b + self.momentum * self.v_b
         
-        # Update velocity: v = β*v + ∇J(θ - β*v)
-        self.velocity = self.momentum * self.velocity + gradient
+        # Compute gradient at look-ahead position
+        y_pred = X @ W_lookahead + b_lookahead
+        error = y_pred - y
         
-        # Update parameters: θ = θ - η*v
-        new_params = params - self.learning_rate * self.velocity
+        grad_W = (2/n_samples) * X.T @ error
+        grad_b = (2/n_samples) * np.sum(error)
         
-        return new_params
+        return grad_W, grad_b
     
-    def get_lookahead_params(self, params: np.ndarray) -> np.ndarray:
+    def _compute_update(self, grad_W: np.ndarray, grad_b: float,
+                       step: int) -> Tuple[np.ndarray, float]:
         """
-        Compute look-ahead parameters for gradient evaluation.
-        
-        Parameters:
-        -----------
-        params : ndarray
-            Current parameters
-            
-        Returns:
-        --------
-        lookahead_params : ndarray
-            θ - β*v (where gradient should be evaluated)
+        Nesterov update:
+        v ← β*v - α*∇J(θ + β*v)  [gradient already computed at look-ahead]
+        Δθ = v
         """
-        if self.velocity is None:
-            return params
-        return params - self.momentum * self.velocity
+        # Update velocities (gradient already at look-ahead position)
+        self.v_W = self.momentum * self.v_W - self.learning_rate * grad_W
+        self.v_b = self.momentum * self.v_b - self.learning_rate * grad_b
+        
+        # Track effective learning rate
+        if self.track_history:
+            self.learning_rate_history.append(self.learning_rate)
+        
+        return self.v_W, self.v_b
     
-    def reset(self):
-        """Reset optimizer state including velocity."""
-        super().reset()
-        self.velocity = None
-    
-    def get_config(self) -> Dict:
-        """Get optimizer configuration."""
+    def get_hyperparameters(self) -> Dict:
+        """Return Nesterov hyperparameters."""
         return {
+            'optimizer': 'NesterovMomentum',
             'learning_rate': self.learning_rate,
             'momentum': self.momentum
         }
+
+
+if __name__ == "__main__":
+    # Test momentum optimizers
+    print("Testing Momentum-based Optimizers\n")
+    
+    from data_generator import LinearDataGenerator
+    
+    np.random.seed(42)
+    data_gen = LinearDataGenerator(W_true=2, b_true=5, seed=42)
+    X, y = data_gen.generate_data(n_samples=100, noise_std=1.0)
+    
+    print("="*70)
+    print("1. Classical Momentum")
+    print("="*70)
+    momentum_opt = MomentumSGD(
+        learning_rate=0.1,
+        momentum=0.9,
+        epochs=300,
+        random_seed=42,
+        monitor_convergence=False
+    )
+    momentum_opt.fit(X, y, verbose=True)
+    
+    print("\n" + "="*70)
+    print("2. Nesterov Accelerated Gradient")
+    print("="*70)
+    nesterov_opt = NesterovMomentum(
+        learning_rate=0.1,
+        momentum=0.9,
+        epochs=300,
+        random_seed=42,
+        monitor_convergence=False
+    )
+    nesterov_opt.fit(X, y, verbose=True)
+    
+    # Compare convergence
+    print("\n" + "="*70)
+    print("Convergence Comparison")
+    print("="*70)
+    print(f"Classical Momentum final loss: {momentum_opt.get_history()['loss_history'][-1]:.6f}")
+    print(f"Nesterov final loss: {nesterov_opt.get_history()['loss_history'][-1]:.6f}")
+    print(f"Nesterov speedup: {momentum_opt.get_history()['loss_history'][-1] / nesterov_opt.get_history()['loss_history'][-1]:.2f}x")
