@@ -1,7 +1,7 @@
-# Optimization Primitive Library: Gradient Descent with Provable Convergence
+# Optimization Primitive Library: From Convex to Deep Non-Convex
 
 > **Project Type**: Mathematical Optimization Research & Theory Implementation  
-> **Focus**: Convergence Theory, Numerical Stability, Algorithm Analysis
+> **Focus**: Convergence Theory, Non-Convex Optimization, Deep Learning
 
 [![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
 [![NumPy](https://img.shields.io/badge/numpy-%23013243.svg?logo=numpy&logoColor=white)](https://numpy.org/)
@@ -11,22 +11,33 @@
 
 ## 🎯 Project Vision (2035 AI Agent Era)
 
-**This is not a simple gradient descent implementation—it's a research-grade optimization library that proves mathematical guarantees and validates them experimentally.**
+**This is a complete journey from convex optimization theory to deep non-convex neural networks - with mathematical proofs, visualizations, and production-grade code.**
 
-In the AI agent era, this project serves as:
-1. **Theoretical Foundation**: Mathematically rigorous implementation of optimization primitives
-2. **Educational Resource**: Teaching convergence theory through executable code
-3. **Research Platform**: Extensible framework for studying optimization dynamics
-4. **Benchmark Suite**: Performance and stability validation tools
+### Unique Value Proposition
+
+1. **Theory ↔ Practice Bridge**: Every algorithm proven theoretically, validated empirically
+2. **Convex to Non-Convex**: Smooth progression from simple to complex
+3. **Research Platform**: Loss landscapes, saddle points, Hessian analysis
+4. **Educational Resource**: Teaching optimization through executable mathematics
 
 ---
 
-## 🚀 What Makes This Different?
+## 🚀 Three-Phase Evolution
 
-### Traditional ML Libraries (PyTorch, scikit-learn)
-- ❌ Black-box optimizers
-- ❌ No convergence guarantees
-- ❌ Limited mathematical transparency
+### Phase 1: Convex Foundations ✅
+**Linear Regression + Convergence Theory**
+
+- Lipschitz constant: $L = \lambda_{\max}(H)$
+- Condition number: $\kappa = L/\mu$  
+- Optimal learning rate: $\eta^* = 2/(L+\mu)$
+- Convergence guarantee: $\|\theta_k - \theta^*\|^2 \leq \rho^k \|\theta_0 - \theta^*\|^2$
+
+### Phase 2: Optimizer Zoo ✅
+**7 Production Optimizers**
+
+- **First-order**: SGD, Momentum, Nesterov
+- **Adaptive**: AdaGrad, RMSProp, Adam, AdamW
+- Unified API, 70+ pages docs, 25+ tests
 
 ### This Project
 - ✓ **Every algorithm has mathematical proof**
@@ -361,7 +372,7 @@ See [OPTIMIZER_GUIDE.md](docs/OPTIMIZER_GUIDE.md) for complete decision tree.
 
 ## ⚖️ License
 
-MIT License - see LICENSE file for details.
+MIT License
 
 ---
 
@@ -382,12 +393,10 @@ MIT License - see LICENSE file for details.
 
 ## 🔗 Citation
 
-If you use this code in academic work, please cite:
-
 ```bibtex
-@misc{gradient-descent-theory,
+@misc{optimization-library-2025,
   author = {Sangwoo Sin},
-  title = {Optimization Primitive Library: Gradient Descent with Provable Convergence},
+  title = {Optimization Primitive Library: From Convex to Deep Non-Convex},
   year = {2025},
   url = {https://github.com/sinsangwoo/ML-Gradient-Descent-Viz}
 }
@@ -395,4 +404,4 @@ If you use this code in academic work, please cite:
 
 ---
 
-*Building optimization primitives with mathematical rigor and numerical precision.*
+*From linear regression to neural networks - with mathematical rigor.*
