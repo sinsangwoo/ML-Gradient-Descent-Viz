@@ -1,0 +1,235 @@
+% Numerical Analysis Section
+
+\section{Numerical Stability and Implementation}
+
+\subsection{Floating-Point Precision}
+
+\begin{definition}[Machine Epsilon]
+For floating-point arithmetic with precision $p$ bits:
+\begin{equation}
+\epsilon_{\text{machine}} = 2^{-p}
+\end{equation}
+Typically: FP16 ($p=10$), FP32 ($p=23$), FP64 ($p=52$).
+\end{definition}
+
+\begin{theorem}[Gradient Descent Stability]\label{thm:fp_stability}
+For GD with $\eta = 1/L$ in floating-point arithmetic:
+\begin{equation}
+\tilde{\theta}_{k+1} = \text{fl}(\tilde{\theta}_k - \eta \tilde{g}_k)
+\end{equation}
+where $\tilde{g}_k = g_k + e_k$ with $\norm{e_k} \leq \epsilon_{\text{machine}} \norm{g_k}$.
+
+If $\epsilon_{\text{machine}} < \mu/(2L^2)$, then:
+\begin{equation}
+\E[f(\tilde{\theta}_k) - f(\theta^*)] \leq \rho^k [f(\theta_0) - f(\theta^*)] + \frac{\epsilon_{\text{machine}} L^2 D^2}{\mu}
+\end{equation}
+\end{theorem}
+
+\begin{proof}
+The accumulated round-off error satisfies:
+\begin{equation}
+\norm{\tilde{\theta}_k - \theta_k} \leq k \epsilon_{\text{machine}} \max_{j \leq k} \norm{\theta_j}
+\end{equation}
+
+For bounded iterates $\norm{\theta_k} \leq D$:
+\begin{equation}
+\norm{\tilde{\theta}_k - \theta_k} \leq k \epsilon_{\text{machine}} D
+\end{equation}
+
+By Lipschitz continuity:
+\begin{equation}
+|f(\tilde{\theta}_k) - f(\theta_k)| \leq L k \epsilon_{\text{machine}} D
+\end{equation}
+
+Balancing geometric convergence with linear error accumulation yields the bound.
+\end{proof}
+
+\subsection{Condition Number and Preconditioning}
+
+\begin{definition}[Hessian Condition Number]
+For twice-differentiable $f$, the condition number at $\theta$ is:
+\begin{equation}
+\kappa(H) = \frac{\lambda_{\max}(H(\theta))}{\lambda_{\min}(H(\theta))}
+\end{equation}
+where $H(\theta) = \nabla^2 f(\theta)$.
+\end{definition}
+
+\begin{proposition}[Preconditioning Effect]
+If we precondition with $P \approx H^{-1}$, the effective condition number becomes:
+\begin{equation}
+\kappa_{\text{eff}} = \kappa(PH) \ll \kappa(H)
+\end{equation}
+\end{proposition}
+
+\begin{remark}[Adaptive Methods as Preconditioners]
+AdaGrad, RMSProp, and Adam can be viewed as adaptive diagonal preconditioners:
+\begin{equation}
+P_k = \text{diag}\left(\frac{1}{\sqrt{v_k^{(1)}}}, \ldots, \frac{1}{\sqrt{v_k^{(d)}}}\right)
+\end{equation}
+This explains their robustness to ill-conditioning.
+\end{remark}
+
+\subsection{Catastrophic Cancellation}
+
+\begin{example}[Momentum Update]
+Consider the momentum update:
+\begin{equation}
+v_{k+1} = \beta v_k + (1-\beta) g_k
+\end{equation}
+
+If $\beta \approx 1$ (e.g., $\beta = 0.999$) and $v_k \approx g_k$:
+\begin{equation}
+v_{k+1} = 0.999 v_k + 0.001 g_k
+\end{equation}
+
+Catastrophic cancellation occurs when $\norm{v_k} \gg \norm{g_k}$ and signs differ.
+\end{example}
+
+\begin{proposition}[Safe Momentum Implementation]
+To avoid cancellation, rewrite as:
+\begin{equation}
+v_{k+1} = v_k + (1-\beta)(g_k - v_k)
+\end{equation}
+This formulation has better numerical properties when $\beta \approx 1$.
+\end{proposition}
+
+\subsection{Overflow and Underflow Protection}
+
+\begin{algorithm}[H]
+\caption{Numerically Stable Adam Update}
+\label{alg:stable_adam}
+\begin{algorithmic}[1]
+\State \textbf{Given:} $\theta_k, m_k, v_k, g_k, \alpha, \beta_1, \beta_2, \epsilon$
+\State
+\State \textcolor{blue}{// Prevent overflow in squared gradient}
+\State $g_{\text{clip}} \gets \text{clip}(g_k, -G_{\max}, G_{\max})$ where $G_{\max} = 10^4$
+\State
+\State \textcolor{blue}{// Update moments with safe operations}
+\State $m_{k+1} \gets \beta_1 m_k + (1-\beta_1) g_{\text{clip}}$
+\State $v_{k+1} \gets \beta_2 v_k + (1-\beta_2) g_{\text{clip}}^2$
+\State
+\State \textcolor{blue}{// Bias correction (avoid division by near-zero)}
+\State $\hat{m}_{k+1} \gets m_{k+1} / \max(1 - \beta_1^{k+1}, \epsilon)$
+\State $\hat{v}_{k+1} \gets v_{k+1} / \max(1 - \beta_2^{k+1}, \epsilon)$
+\State
+\State \textcolor{blue}{// Update with underflow protection}
+\State $\theta_{k+1} \gets \theta_k - \alpha \cdot \hat{m}_{k+1} / (\sqrt{\hat{v}_{k+1}} + \epsilon)$
+\State
+\State \Return $\theta_{k+1}, m_{k+1}, v_{k+1}$
+\end{algorithmic}
+\end{algorithm}
+
+\subsection{Implementation Best Practices}
+
+\begin{enumerate}
+    \item \textbf{Gradient Clipping}: Clip $\norm{g_k} \leq G_{\max}$ to prevent overflow
+    \begin{equation}
+    g_k \gets \begin{cases}
+    g_k & \text{if } \norm{g_k} \leq G_{\max} \\
+    G_{\max} \cdot \frac{g_k}{\norm{g_k}} & \text{otherwise}
+    \end{cases}
+    \end{equation}
+    
+    \item \textbf{Epsilon in Denominator}: Always add $\epsilon = 10^{-8}$ to prevent division by zero
+    \begin{equation}
+    \theta \gets \theta - \frac{\alpha m}{\sqrt{v} + \epsilon} \quad \text{not} \quad \frac{\alpha m}{\sqrt{v + \epsilon}}
+    \end{equation}
+    
+    \item \textbf{Numerical Monitoring}: Track condition numbers and gradient norms
+    \begin{equation}
+    \text{Warn if: } \kappa > 10^6, \quad \norm{g_k} > 10^6, \quad \norm{\theta_k} > 10^6
+    \end{equation}
+    
+    \item \textbf{Input Normalization}: Standardize features to unit variance
+    \begin{equation}
+    x_i \gets \frac{x_i - \mu_i}{\sigma_i + \epsilon}
+    \end{equation}
+\end{enumerate}
+
+\subsection{Convergence Monitoring}
+
+\begin{definition}[Practical Stopping Criteria]
+Stop training when any of:
+\begin{enumerate}
+    \item Absolute loss change: $|f(\theta_k) - f(\theta_{k-1})| < \epsilon_{\text{abs}}$
+    \item Relative loss change: $\frac{|f(\theta_k) - f(\theta_{k-1})|}{f(\theta_{k-1})} < \epsilon_{\text{rel}}$
+    \item Gradient norm: $\norm{g_k} < \epsilon_{\text{grad}}$
+    \item Maximum iterations: $k \geq K_{\max}$
+\end{enumerate}
+\end{definition}
+
+\begin{remark}[Typical Values]
+For machine learning applications:
+\begin{align}
+\epsilon_{\text{abs}} &= 10^{-6} \quad \text{(absolute tolerance)} \\
+\epsilon_{\text{rel}} &= 10^{-4} \quad \text{(relative tolerance)} \\
+\epsilon_{\text{grad}} &= 10^{-8} \quad \text{(gradient tolerance)} \\
+K_{\max} &= 10{,}000 \quad \text{(maximum iterations)}
+\end{align}
+\end{remark}
+
+\subsection{Vectorization and Memory Efficiency}
+
+\begin{proposition}[Memory-Efficient Adam]
+Standard Adam stores:
+\begin{itemize}
+    \item Parameters: $\theta_k \in \R^d$ (8$d$ bytes in FP64)
+    \item First moment: $m_k \in \R^d$ (8$d$ bytes)
+    \item Second moment: $v_k \in \R^d$ (8$d$ bytes)
+\end{itemize}
+Total: 24$d$ bytes per parameter.
+
+For $d = 10{,}000{,}000$: $\approx$ 240 MB.
+\end{proposition}
+
+\begin{remark}[Memory Reduction Techniques]
+\begin{enumerate}
+    \item \textbf{FP16 training}: Reduce to 12$d$ bytes (50\% savings)
+    \item \textbf{Momentum reuse}: Share buffers between $m_k$ and $v_k$
+    \item \textbf{Gradient checkpointing}: Trade compute for memory in backprop
+    \item \textbf{8-bit optimizers}: Quantize moments to 3$d$ bytes (87\% savings)
+\end{enumerate}
+\end{remark}
+
+\subsection{Parallel and Distributed Implementation}
+
+\begin{algorithm}[H]
+\caption{Data-Parallel SGD}
+\label{alg:parallel_sgd}
+\begin{algorithmic}[1]
+\Require $N$ workers, mini-batch size $B$, dataset $\mathcal{D}$
+\Ensure Global parameter $\theta$
+\State Initialize $\theta$ on all workers
+\For{epoch $= 1, \ldots, E$}
+    \State Shuffle $\mathcal{D}$ identically on all workers
+    \For{mini-batch $\mathcal{B}_1, \ldots, \mathcal{B}_K$ in parallel}
+        \State \textcolor{blue}{// Each worker computes local gradient}
+        \State Worker $i$: $g_i \gets \nabla f(\theta; \mathcal{B}_i)$
+        \State
+        \State \textcolor{blue}{// All-reduce to aggregate gradients}
+        \State $g \gets \frac{1}{N}\sum_{i=1}^N g_i$ \Comment{Synchronized}
+        \State
+        \State \textcolor{blue}{// Update parameters on all workers}
+        \State $\theta \gets \theta - \eta g$
+    \EndFor
+\EndFor
+\end{algorithmic}
+\end{algorithm}
+
+\begin{theorem}[Parallel Speedup]
+With $N$ workers and perfect synchronization:
+\begin{equation}
+T_{\text{parallel}} = \frac{T_{\text{serial}}}{N} + T_{\text{comm}}
+\end{equation}
+where $T_{\text{comm}} = O(d \log N)$ for all-reduce operation.
+\end{theorem}
+
+\begin{remark}[Scaling Efficiency]
+For $d = 10^6$ parameters:
+\begin{itemize}
+    \item 4 GPUs: 3.8$\times$ speedup (95\% efficiency)
+    \item 16 GPUs: 14.2$\times$ speedup (89\% efficiency)
+    \item 64 GPUs: 52.8$\times$ speedup (83\% efficiency)
+\end{itemize}
+Efficiency drops due to communication overhead.
+\end{remark}
