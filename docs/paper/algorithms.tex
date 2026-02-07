@@ -1,0 +1,174 @@
+% Additional algorithms section for the main paper
+% This file contains Adam, AdamW, and complexity comparisons
+
+\section{Adam and Variants}
+
+\subsection{Adam: Adaptive Moment Estimation}
+
+\begin{algorithm}[H]
+\caption{Adam (Adaptive Moment Estimation)}
+\label{alg:adam}
+\begin{algorithmic}[1]
+\Require Initial point $\theta_0$, step size $\alpha = 0.001$
+\Require Exponential decay rates $\beta_1 = 0.9, \beta_2 = 0.999$
+\Require Small constant $\epsilon = 10^{-8}$
+\Ensure Approximate minimizer $\theta_K$
+\State Initialize $m_0 \gets 0$ (first moment)
+\State Initialize $v_0 \gets 0$ (second moment)
+\For{$k = 1, 2, \ldots, K$}
+    \State $g_k \gets \grad f(\theta_{k-1})$
+    \State $m_k \gets \beta_1 m_{k-1} + (1-\beta_1) g_k$ \Comment{Update biased first moment}
+    \State $v_k \gets \beta_2 v_{k-1} + (1-\beta_2) g_k^2$ \Comment{Update biased second moment}
+    \State $\hat{m}_k \gets m_k / (1 - \beta_1^k)$ \Comment{Bias correction for first moment}
+    \State $\hat{v}_k \gets v_k / (1 - \beta_2^k)$ \Comment{Bias correction for second moment}
+    \State $\theta_k \gets \theta_{k-1} - \alpha \cdot \hat{m}_k / (\sqrt{\hat{v}_k} + \epsilon)$
+\EndFor
+\State \Return $\theta_K$
+\end{algorithmic}
+\end{algorithm}
+
+\begin{theorem}[Adam Regret Bound]\label{thm:adam}
+Assume $f_t$ are convex and have bounded gradients $\norm{g_t} \leq G$ and bounded parameters $\norm{\theta_t - \theta^*} \leq D$. Then Adam achieves:
+\begin{equation}
+R(K) = \sum_{t=1}^K [f_t(\theta_t) - f_t(\theta^*)] = O\left(\frac{D^2}{\alpha(1-\beta_1)}\sqrt{K}\right)
+\end{equation}
+\end{theorem}
+
+\begin{proof}[Proof Sketch]
+The proof proceeds in three main steps:
+
+\textbf{Step 1: Descent Lemma.} Define the adaptive learning rate:
+\begin{equation}
+\alpha_t^{(i)} = \frac{\alpha}{\sqrt{v_t^{(i)}}}
+\end{equation}
+
+By the update rule and convexity:
+\begin{equation}
+f_t(\theta_t) - f_t(\theta^*) \leq \inner{g_t}{\theta_t - \theta^*}
+\end{equation}
+
+\textbf{Step 2: Distance Bound.} The parameter update induces:
+\begin{align}
+\norm{\theta_{t+1} - \theta^*}^2 &\leq \norm{\theta_t - \theta^*}^2 - 2\alpha_t \inner{\hat{m}_t}{\theta_t - \theta^*} \\
+&\quad + \alpha_t^2 \norm{\hat{m}_t / \sqrt{\hat{v}_t}}^2
+\end{align}
+
+\textbf{Step 3: Regret Decomposition.} Telescope the bound and use:
+\begin{equation}
+\sum_{t=1}^K \frac{\inner{g_t}{\theta_t - \theta^*}}{\sqrt{v_t}} \leq \frac{D^2}{2\alpha} + \frac{\alpha}{2}\sum_{t=1}^K \frac{\norm{g_t}^2}{v_t}
+\end{equation}
+
+The bias correction terms introduce additional constants but don't change the asymptotic rate.
+\end{proof}
+
+\begin{remark}[Practical Performance]
+While the theoretical regret bound is $O(\sqrt{K})$, Adam performs exceptionally well in practice due to:
+\begin{itemize}
+    \item Adaptive per-parameter learning rates
+    \item Bias correction for initial iterations
+    \item Momentum-like behavior from first moment
+    \item Scale invariance to gradient magnitude
+\end{itemize}
+\end{remark}
+
+\begin{remark}[Complexity]
+\textbf{Time Complexity}: $O(d)$ per iteration \\
+\textbf{Space Complexity}: $O(3d)$ (parameters + first moment + second moment) \\
+\textbf{Hyperparameters}: $\alpha, \beta_1, \beta_2, \epsilon$ (defaults work well in practice)
+\end{remark}
+
+\subsection{AdamW: Decoupled Weight Decay}
+
+\begin{algorithm}[H]
+\caption{AdamW (Adam with Decoupled Weight Decay)}
+\label{alg:adamw}
+\begin{algorithmic}[1]
+\Require Initial point $\theta_0$, step size $\alpha$, weight decay $\lambda$
+\Require Decay rates $\beta_1, \beta_2$, $\epsilon$
+\Ensure Approximate minimizer $\theta_K$
+\State Initialize $m_0 \gets 0$, $v_0 \gets 0$
+\For{$k = 1, 2, \ldots, K$}
+    \State $g_k \gets \grad f(\theta_{k-1})$
+    \State $m_k \gets \beta_1 m_{k-1} + (1-\beta_1) g_k$
+    \State $v_k \gets \beta_2 v_{k-1} + (1-\beta_2) g_k^2$
+    \State $\hat{m}_k \gets m_k / (1 - \beta_1^k)$
+    \State $\hat{v}_k \gets v_k / (1 - \beta_2^k)$
+    \State $\theta_k \gets \theta_{k-1} - \alpha \left(\frac{\hat{m}_k}{\sqrt{\hat{v}_k} + \epsilon} + \lambda \theta_{k-1}\right)$ \Comment{Decoupled decay}
+\EndFor
+\State \Return $\theta_K$
+\end{algorithmic}
+\end{algorithm}
+
+\begin{remark}[Key Difference from L2 Regularization]
+Standard Adam with L2 regularization: $g_k \gets \grad f(\theta_k) + \lambda \theta_k$ (coupled) \\
+AdamW: Separate weight decay term (decoupled) \\
+
+\textbf{Why it matters}: In adaptive methods, L2 regularization is applied to the scaled gradient $g_k/\sqrt{v_k}$, which can behave unexpectedly. AdamW applies weight decay directly to parameters, matching SGD+momentum behavior.
+\end{remark}
+
+\begin{theorem}[AdamW Effective Regularization]
+For strongly convex $f$ with optimal solution $\theta^* = 0$, AdamW converges to a neighborhood of $\theta^*$ with radius:
+\begin{equation}
+\norm{\theta_k} \leq O\left(\frac{\alpha}{\lambda}\right)
+\end{equation}
+compared to Adam+L2 which has scaling dependent on gradient statistics.
+\end{theorem}
+
+\begin{remark}[Complexity]
+\textbf{Time Complexity}: $O(d)$ per iteration (same as Adam) \\
+\textbf{Space Complexity}: $O(3d)$ \\
+\textbf{Use Case}: Fine-tuning, transfer learning, regularization-sensitive tasks
+\end{remark}
+
+% ============================================================
+\section{Complexity Comparison}
+% ============================================================
+
+\begin{table}[h]
+\centering
+\caption{Algorithm Complexity Summary}
+\label{tab:complexity}
+\begin{tabular}{lccc}
+\toprule
+\textbf{Algorithm} & \textbf{Time per Iter} & \textbf{Space} & \textbf{Iterations to $\epsilon$} \\
+\midrule
+GD & $O(d)$ & $O(d)$ & $O(\kappa \log(1/\epsilon))$ \\
+Momentum & $O(d)$ & $O(2d)$ & $O(\sqrt{\kappa} \log(1/\epsilon))$ \\
+Nesterov & $O(d)$ & $O(2d)$ & $O(\sqrt{\kappa} \log(1/\epsilon))$ \\
+AdaGrad & $O(d)$ & $O(2d)$ & $O(G^2/(\epsilon^2 \mu))$ \\
+RMSProp & $O(d)$ & $O(2d)$ & No formal guarantee \\
+Adam & $O(d)$ & $O(3d)$ & $O(\sqrt{K})$ regret \\
+AdamW & $O(d)$ & $O(3d)$ & $O(\sqrt{K})$ regret \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{remark}[Interpretation]
+\begin{itemize}
+    \item \textbf{Classical methods} (GD, Momentum, Nesterov): Proven rates for strongly convex problems
+    \item \textbf{Adaptive methods} (Adam, RMSProp): Better practical performance, weaker theory
+    \item \textbf{Space-time tradeoff}: Adaptive methods use 2-3$\times$ more memory
+    \item \textbf{Hyperparameter sensitivity}: GD/Momentum sensitive to learning rate; Adam more robust
+\end{itemize}
+\end{remark}
+
+\section{When to Use Each Optimizer}
+
+\begin{table}[h]
+\centering
+\caption{Optimizer Selection Guide}
+\label{tab:selection}
+\begin{tabular}{lp{8cm}}
+\toprule
+\textbf{Optimizer} & \textbf{Best Use Cases} \\
+\midrule
+GD & Well-conditioned convex problems, theoretical analysis, baseline \\
+Momentum & Oscillating gradients, ravines, high curvature \\
+Nesterov & Convex problems requiring optimal $O(1/k^2)$ rate, theoretical guarantees \\
+AdaGrad & Sparse features (NLP, embeddings), per-coordinate adaptation \\
+RMSProp & RNNs, non-stationary objectives, online learning \\
+Adam & \textbf{Default choice}, deep learning, sparse gradients, robust to hyperparameters \\
+AdamW & Fine-tuning, transfer learning, when L2 regularization is important \\
+\bottomrule
+\end{tabular}
+\end{table}
