@@ -1,0 +1,92 @@
+# MNIST Benchmark Configuration
+# Binary classification: digits 0-4 vs 5-9
+
+name: "mnist_benchmark"
+description: "MNIST binary classification benchmark"
+version: "1.0.0"
+
+seed: 42
+
+dataset:
+  name: "mnist"
+  params:
+    n_samples: 10000  # Subsample for faster testing (max: 60000)
+    binary_classification: true
+    normalize: true
+    add_bias: true
+    test_split: null  # Use official MNIST test set
+
+optimizers:
+  sgd:
+    enabled: true
+    learning_rate: 0.01
+    epochs: 500
+    tolerance: 1.0e-4
+  
+  momentum:
+    enabled: true
+    learning_rate: 0.01
+    momentum: 0.9
+    epochs: 500
+    tolerance: 1.0e-4
+  
+  nesterov:
+    enabled: true
+    learning_rate: 0.01
+    momentum: 0.9
+    epochs: 500
+    tolerance: 1.0e-4
+  
+  adagrad:
+    enabled: true
+    learning_rate: 0.1
+    epochs: 500
+    tolerance: 1.0e-4
+  
+  rmsprop:
+    enabled: true
+    learning_rate: 0.001
+    beta: 0.9
+    epochs: 500
+    tolerance: 1.0e-4
+  
+  adam:
+    enabled: true
+    learning_rate: 0.001
+    beta1: 0.9
+    beta2: 0.999
+    epochs: 500
+    tolerance: 1.0e-4
+  
+  adamw:
+    enabled: true
+    learning_rate: 0.001
+    beta1: 0.9
+    beta2: 0.999
+    weight_decay: 0.01
+    epochs: 500
+    tolerance: 1.0e-4
+
+profiling:
+  enabled: true
+  track_memory: true
+  track_time: true
+  track_gpu: true
+
+output:
+  save_results: true
+  save_plots: true
+  save_models: true
+  results_dir: "./results/mnist"
+  plots_dir: "./plots/mnist"
+  format: "json"
+
+logging:
+  level: "INFO"
+  save_to_file: true
+  log_dir: "./logs/mnist"
+
+reproducibility:
+  deterministic: true
+  numpy_seed: ${seed}
+  python_hash_seed: ${seed}

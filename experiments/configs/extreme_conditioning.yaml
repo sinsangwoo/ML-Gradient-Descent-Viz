@@ -1,0 +1,82 @@
+# Extreme Conditioning Test Configuration
+# Tests numerical stability at κ → 10^9
+
+name: "extreme_conditioning"
+description: "Numerical stability test with extreme ill-conditioning"
+version: "1.0.0"
+
+seed: 42
+
+dataset:
+  name: "extreme_conditioning"
+  params:
+    n_samples: 200
+    n_features: 50
+    condition_type: "exponential"  # exponential, near_singular, sparse_extreme
+    target_kappa: 1.0e6  # Try: 1e3, 1e6, 1e9
+    noise_std: 0.01
+    test_split: 0.2
+
+optimizers:
+  # Classical methods - expect issues at high κ
+  sgd:
+    enabled: true
+    learning_rate: 0.001  # Very small LR needed
+    epochs: 2000
+    tolerance: 1.0e-4
+  
+  momentum:
+    enabled: true
+    learning_rate: 0.001
+    momentum: 0.9
+    epochs: 2000
+    tolerance: 1.0e-4
+  
+  nesterov:
+    enabled: true
+    learning_rate: 0.001
+    momentum: 0.9
+    epochs: 2000
+    tolerance: 1.0e-4
+  
+  # Adaptive methods - should handle better
+  adam:
+    enabled: true
+    learning_rate: 0.0001  # Small LR for extreme κ
+    beta1: 0.9
+    beta2: 0.999
+    epochs: 2000
+    tolerance: 1.0e-4
+  
+  adamw:
+    enabled: true
+    learning_rate: 0.0001
+    beta1: 0.9
+    beta2: 0.999
+    weight_decay: 0.01
+    epochs: 2000
+    tolerance: 1.0e-4
+
+profiling:
+  enabled: true
+  track_memory: true
+  track_time: true
+  track_gpu: false
+
+output:
+  save_results: true
+  save_plots: true
+  results_dir: "./results/extreme_kappa_${dataset.params.target_kappa:.0e}"
+  plots_dir: "./plots/extreme_kappa_${dataset.params.target_kappa:.0e}"
+  format: "json"
+
+logging:
+  level: "DEBUG"  # More verbose for debugging divergence
+  save_to_file: true
+  log_dir: "./logs/extreme_conditioning"
+
+reproducibility:
+  deterministic: true
+  numpy_seed: ${seed}
+  python_hash_seed: ${seed}
+  warn_on_nondeterministic: true

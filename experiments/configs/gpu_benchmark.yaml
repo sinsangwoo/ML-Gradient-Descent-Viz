@@ -1,0 +1,57 @@
+# GPU Acceleration Benchmark
+# Compare CPU vs GPU performance
+
+name: "gpu_benchmark"
+description: "GPU acceleration comparison across backends"
+version: "1.0.0"
+
+seed: 42
+
+dataset:
+  name: "mnist"
+  params:
+    n_samples: 60000  # Full MNIST for GPU test
+    binary_classification: true
+    normalize: true
+    add_bias: true
+
+# Test with Adam only (representative)
+optimizers:
+  adam:
+    enabled: true
+    learning_rate: 0.001
+    beta1: 0.9
+    beta2: 0.999
+    epochs: 100
+    tolerance: 1.0e-6
+
+# GPU-specific settings
+backend:
+  name: "jax"  # Options: numpy, jax, cupy
+  device: "gpu"  # Options: cpu, gpu
+  use_jit: true  # JIT compilation for JAX
+  precision: "float32"  # float16, float32, float64
+
+profiling:
+  enabled: true
+  track_memory: true
+  track_time: true
+  track_gpu: true
+  benchmark_iterations: 5  # Run multiple times for stability
+
+output:
+  save_results: true
+  save_plots: true
+  results_dir: "./results/gpu_benchmark"
+  plots_dir: "./plots/gpu_benchmark"
+  format: "json"
+
+logging:
+  level: "INFO"
+  save_to_file: true
+  log_dir: "./logs/gpu_benchmark"
+
+reproducibility:
+  deterministic: true
+  numpy_seed: ${seed}
+  python_hash_seed: ${seed}

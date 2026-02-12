@@ -1,0 +1,68 @@
+# Scalability Test Configuration
+# Tests performance across increasing dimensions
+
+name: "scalability_test"
+description: "Test optimizer scalability from d=100 to d=10,000"
+version: "1.0.0"
+
+seed: 42
+
+# This config will be swept over different dimensions
+dataset:
+  name: "highdim"
+  params:
+    n_samples: 1000
+    n_features: 1000  # Will be overridden in sweep: [100, 1000, 5000, 10000]
+    n_informative: null  # null = all features informative
+    condition_number: 50.0
+    noise_std: 0.1
+    test_split: 0.2
+
+# Only test fastest optimizers for scalability
+optimizers:
+  nesterov:
+    enabled: true
+    learning_rate: 0.01
+    momentum: 0.9
+    epochs: 500
+    tolerance: 1.0e-6
+  
+  adam:
+    enabled: true
+    learning_rate: 0.001
+    beta1: 0.9
+    beta2: 0.999
+    epochs: 500
+    tolerance: 1.0e-6
+  
+  adamw:
+    enabled: true
+    learning_rate: 0.001
+    beta1: 0.9
+    beta2: 0.999
+    weight_decay: 0.01
+    epochs: 500
+    tolerance: 1.0e-6
+
+profiling:
+  enabled: true
+  track_memory: true
+  track_time: true
+  track_gpu: true
+
+output:
+  save_results: true
+  save_plots: true
+  results_dir: "./results/scalability_d${dataset.params.n_features}"
+  plots_dir: "./plots/scalability"
+  format: "json"
+
+logging:
+  level: "INFO"
+  save_to_file: true
+  log_dir: "./logs/scalability"
+
+reproducibility:
+  deterministic: true
+  numpy_seed: ${seed}
+  python_hash_seed: ${seed}
