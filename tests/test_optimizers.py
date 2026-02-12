@@ -14,10 +14,10 @@ import pytest
 import sys
 import os
 
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../src')))
 
-from optimizers import SGD, MomentumSGD, NesterovMomentum, AdaGrad, RMSProp, Adam, AdamW
-from data_generator import LinearDataGenerator
+from gradient_descent_viz.optimizers import SGD, MomentumSGD, NesterovMomentum, AdaGrad, RMSProp, Adam, AdamW
+from gradient_descent_viz.data.generator import LinearDataGenerator
 
 
 class TestOptimizerAPI:

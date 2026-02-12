@@ -14,10 +14,10 @@ import matplotlib.pyplot as plt
 import sys
 import os
 
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../src')))
 
-from models import PolynomialRegressor, TwoLayerNet, LossLandscapeAnalyzer
-from optimizers import SGD, Adam, NesterovMomentum
+from gradient_descent_viz.models import PolynomialRegressor, TwoLayerNet, LossLandscapeAnalyzer
+from gradient_descent_viz.optimizers import SGD, Adam, NesterovMomentum
 
 
 def demo_polynomial_regression():

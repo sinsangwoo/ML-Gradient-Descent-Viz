@@ -14,9 +14,9 @@ import pytest
 import sys
 import os
 
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../src')))
 
-from models import PolynomialRegressor, TwoLayerNet, LossLandscapeAnalyzer
+from gradient_descent_viz.models import PolynomialRegressor, TwoLayerNet, LossLandscapeAnalyzer
 
 
 class TestPolynomialRegression:
@@ -29,7 +29,7 @@ class TestPolynomialRegression:
         y = 2 * X.flatten() + 5 + np.random.randn(50) * 0.5
         
         model = PolynomialRegressor(degree=1, random_seed=42)
-        model.fit(X, y, learning_rate=0.01, epochs=500, verbose=False)
+        model.fit(X, y, learning_rate=0.01, epochs=2000, verbose=False)
         
         coeffs = model.get_coefficients()
         

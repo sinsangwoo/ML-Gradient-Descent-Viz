@@ -18,11 +18,12 @@ import sys
 import os
 
 # Add parent directory to path
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+# Add parent directory to path
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../src')))
 
-from theory.convergence_proof import ConvergenceAnalyzer
-from gradient_descent import GradientDescentRegressor
-from data_generator import LinearDataGenerator
+from gradient_descent_viz.theory.convergence_proof import ConvergenceAnalyzer
+from gradient_descent_viz.optimizers.sgd import SGD as GradientDescentRegressor
+from gradient_descent_viz.data.generator import LinearDataGenerator
 
 
 def demo_basic_analysis():

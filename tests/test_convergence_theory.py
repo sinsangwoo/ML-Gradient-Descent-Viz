@@ -15,9 +15,10 @@ import sys
 import os
 
 # Add parent directory to path
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+# Add parent directory to path
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../src')))
 
-from theory.convergence_proof import ConvergenceAnalyzer
+from gradient_descent_viz.theory.convergence_proof import ConvergenceAnalyzer
 
 
 class TestConvergenceAnalyzer:
@@ -26,9 +27,9 @@ class TestConvergenceAnalyzer:
     def setup_method(self):
         """Set up test fixtures."""
         np.random.seed(42)
-        self.m, self.n = 100, 1
+        self.m, self.n = 100, 2
         self.X = 2 * np.random.rand(self.m, self.n)
-        self.y = 5 + 2 * self.X + np.random.randn(self.m, 1)
+        self.y = 5 + 2 * self.X[:, 0:1] + np.random.randn(self.m, 1)
         self.analyzer = ConvergenceAnalyzer(self.X, self.y)
     
     def test_hessian_shape(self):
