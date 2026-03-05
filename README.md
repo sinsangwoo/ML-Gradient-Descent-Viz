@@ -9,7 +9,7 @@
 
 ---
 
-## 🎯 Project Vision (2035 AI Agent Era)
+## 🎯 Project Vision
 
 **This is a complete journey from convex optimization theory to deep non-convex neural networks - with mathematical proofs, visualizations, and production-grade code.**
 
